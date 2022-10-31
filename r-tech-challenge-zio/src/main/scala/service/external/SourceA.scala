@@ -1,8 +1,7 @@
 package service.external
 
-import service.entity.{RecordAApiEntity, SourceAApiEntity}
-import zio._
-import zio._
+import service.entity.{RecordAApiEntity}
+import zio.{URLayer, ZIO, ZLayer}
 import zio.json._
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
@@ -14,16 +13,15 @@ trait SourceA {
 
 }
 
-case class SourceAImpl(url: String, eventLoopGroup: EventLoopGroup, channelFactory: ChannelFactory) extends SourceA {
-
+case class SourceAImpl(url: String) extends SourceA {
 
    override def fetchSourceARecord(): ZIO[Any, Throwable,Option[RecordAApiEntity]] = (for {
       _  <- ZIO.logInfo(s"Placing a request to $url")
       response  <- Client.request(url)
       maybeRecord <- processResponse(response)
    } yield maybeRecord).provide(
-      ZLayer.fromZIO(ZIO.from(eventLoopGroup)),
-      ZLayer.fromZIO(ZIO.from(channelFactory)))
+      EventLoopGroup.auto(),
+      ChannelFactory.auto)
 
 
    private def processResponse(response: Response): ZIO[Any, Throwable, Option[RecordAApiEntity]] = {
@@ -41,4 +39,11 @@ case class SourceAImpl(url: String, eventLoopGroup: EventLoopGroup, channelFacto
    }
 
 
+}
+
+
+object SourceAImpl {
+   def layer(url: String): ZLayer[Any, Throwable, SourceA] =
+      ZLayer.fromZIO(
+         ZIO.from(SourceAImpl(url)))
 }
