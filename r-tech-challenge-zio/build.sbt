@@ -18,7 +18,9 @@ lazy val root = (project in file("."))
 
       "dev.zio" %% "zio-json" % "0.3.0-RC8",
 
-      "io.d11" %% "zhttp" % "2.0.0-RC11"
+      "io.d11" %% "zhttp" % "2.0.0-RC11",
+
+      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
 
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")

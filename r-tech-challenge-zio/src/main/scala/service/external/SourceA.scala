@@ -1,21 +1,21 @@
 package service.external
 
-import service.entity.{RecordAApiEntity}
+import service.entity.{RecordApiEntity}
 import zio.{URLayer, ZIO, ZLayer}
 import zio.json._
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
-import service.entity.SourceAApiEntity.fromJsonDecoderSourceAApiEntity
+import service.entity.RecordApiEntity.fromJsonDecoderRecordApiEntity
 
 trait SourceA {
 
-   def fetchSourceARecord(): ZIO[Any, Throwable,Option[RecordAApiEntity]]
+   def fetchSourceARecord(): ZIO[Any, Throwable,Option[RecordApiEntity]]
 
 }
 
 case class SourceAImpl(url: String) extends SourceA {
 
-   override def fetchSourceARecord(): ZIO[Any, Throwable,Option[RecordAApiEntity]] = (for {
+   override def fetchSourceARecord(): ZIO[Any, Throwable,Option[RecordApiEntity]] = (for {
       _  <- ZIO.logInfo(s"Placing a request to $url")
       response  <- Client.request(url)
       maybeRecord <- processResponse(response)
@@ -24,9 +24,9 @@ case class SourceAImpl(url: String) extends SourceA {
       ChannelFactory.auto)
 
 
-   private def processResponse(response: Response): ZIO[Any, Throwable, Option[RecordAApiEntity]] = {
+   private def processResponse(response: Response): ZIO[Any, Throwable, Option[RecordApiEntity]] = {
       for {
-         eitherErrorRecord <-  response.body.asString.map(_.fromJson[RecordAApiEntity])
+         eitherErrorRecord <-  response.body.asString.map(_.fromJson[RecordApiEntity])
          zioRecord  = eitherErrorRecord match {
             case Left(e) =>
                ZIO.logWarning(s"Received a malformed record $e") zipRight
