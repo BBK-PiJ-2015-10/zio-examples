@@ -14,9 +14,7 @@ object Main extends ZIOAppDefault {
     sourceA <- ZIO.service[SourceA]
     response <- sourceA.fetchSourceARecord()
     _        <- ZIO.logInfo(s"Sucker got $response")
-    //_ <- ZIO.logInfo("Ending program")
 
-    //_ <- ZIO.logInfo("Starting program")
     sourceB <- ZIO.service[SourceB]
     response <- sourceB.fetchSourceBRecord()
     _        <- ZIO.logInfo(s"Fucker got $response")

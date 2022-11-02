@@ -1,11 +1,10 @@
 package service.external
 
 import service.entity.RecordApiEntity
-import zio.{URLayer, ZIO, ZLayer}
-import zio.json._
+import zio.{ZIO, ZLayer}
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
-import service.entity.RecordApiEntity.fromJsonDecoderRecordApiEntity
+
 
 import scala.xml.{Node, NodeSeq, XML}
 
@@ -20,45 +19,32 @@ case class SourceBImpl(url: String) extends SourceB {
    override def fetchSourceBRecord(): ZIO[Any, Throwable,Option[RecordApiEntity]] = (for {
       _  <- ZIO.logInfo(s"Placing a request to $url")
       response  <- Client.request(url)
-      maybeRecord <- fucker(response)
+      maybeRecord <- processResponse(response)
    } yield maybeRecord).provide(
       EventLoopGroup.auto(),
       ChannelFactory.auto)
 
 
-   private def processResponse(response: Response): ZIO[Any, Throwable, Option[String]] = {
+   private def processResponse(response: Response) = {
       for {
          stringRecord <-  response.body.asString
-         id           <- ZIO.from(parseResponse(stringRecord))
-         _            <- ZIO.logInfo(s"Fucker $id")
-
-      } yield Some(stringRecord)
+         maybeXmlMessage  =  extractXmlMessage(stringRecord)
+         recordApiEntity  =  if (maybeXmlMessage.isEmpty){
+                               val empty : Option[RecordApiEntity] = None
+                               empty
+                            } else {
+           Some(createRecordEntity(maybeXmlMessage.get))
+      }
+      } yield (recordApiEntity)
    }
 
-   private def fucker(response: Response) = {
-      for {
-         stringRecord <-  response.body.asString
-         ale          =   getMessage(stringRecord)
-         xmlMsg            <- ZIO.fromOption(getMessage(stringRecord))
-         //record            <- ZIO.attempt(createRecord(xmlMsg))
-         //val ale : Option[RecordApiEntity]  = Some(record)
-      } yield ()
-   }
-
-   private def parseResponse(response: String) = {
-      val xmlDoc = XML.loadString(response)
-      val xmlMsg =  xmlDoc \\ "msg"
-      xmlMsg.foreach(ale => println(ale.text))
-      xmlMsg.text
-   }
-
-   private def getMessage(response: String): Option[Node] = {
+   private def extractXmlMessage(response: String): Option[Node] = {
       val xmlDoc = XML.loadString(response)
       val xmlMsg = xmlDoc \\ "msg"
       xmlMsg.lastOption
    }
 
-   private def createRecord(msgXml: Node) = {
+   private def createRecordEntity(msgXml: Node) = {
       val idXml = msgXml \ "id"
       if (!idXml.isEmpty) {
          val id = idXml.text
