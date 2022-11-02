@@ -1,15 +1,35 @@
 package service.internal
 
 import service.entity.RecordApiEntity
+import zio.ZIO
+import zio.json.DecoderOps
+import service.entity.RecordApiEntity.fromJsonDecoderRecordApiEntity
 
 import scala.xml.{Node, XML}
 
 object SourceResponseParser {
 
-  def parseXmlResponse(response: String)  : Option[RecordApiEntity]  = {
+  def parseXmlResponse(response: String)  : ZIO[Any, Throwable, Option[RecordApiEntity]]  = {
     val xmlMessage = extractXmlMessage(response)
-    xmlMessage.map(createRecordEntity(_))
+    ZIO.attempt(xmlMessage.map(createRecordEntity(_)))
   }
+
+  def parseJsonResponse(response: String)  : ZIO[Any, Throwable, Option[RecordApiEntity]] = {
+    for {
+      eitherErrorRecord <- ZIO.attempt(response).map(_.fromJson[RecordApiEntity])
+      zioRecord  = eitherErrorRecord match {
+        case Left(e) =>
+          ZIO.logWarning(s"Received a malformed record $e") zipRight
+            ZIO.succeed(None)
+        case Right(record) =>
+          ZIO.succeed(Some(record))
+      }
+      maybeRecord  <- zioRecord
+    } yield maybeRecord
+  }
+
+
+
 
   private def extractXmlMessage(response: String): Option[Node] = {
     val xmlDoc = XML.loadString(response)
@@ -18,11 +38,7 @@ object SourceResponseParser {
   }
 
   private def createRecordEntity(msgXml: Node): RecordApiEntity = {
-    println(s"Ale $msgXml")
-    println("Mimado")
-
     val idXml = msgXml \ "id"
-    println(s"Culon $idXml")
     if (!idXml.isEmpty) {
       val culon = idXml \\ "@value"
       val id  = culon.toList.head.text

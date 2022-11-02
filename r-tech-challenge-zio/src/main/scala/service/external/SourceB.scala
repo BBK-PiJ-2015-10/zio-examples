@@ -1,12 +1,10 @@
 package service.external
 
 import service.entity.RecordApiEntity
+import service.internal.SourceResponseParser
 import zio.{ZIO, ZLayer}
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
-
-
-import scala.xml.{Node, NodeSeq, XML}
 
 trait SourceB {
 
@@ -19,42 +17,17 @@ case class SourceBImpl(url: String) extends SourceB {
    override def fetchSourceBRecord(): ZIO[Any, Throwable,Option[RecordApiEntity]] = (for {
       _  <- ZIO.logInfo(s"Placing a request to $url")
       response  <- Client.request(url)
-      maybeRecord <- processResponse(response)
+      maybeRecordZio <- processResponse(response)
+      maybeRecord <- maybeRecordZio
    } yield maybeRecord).provide(
       EventLoopGroup.auto(),
       ChannelFactory.auto)
 
-
    private def processResponse(response: Response) = {
       for {
          stringRecord <-  response.body.asString
-         maybeXmlMessage  =  extractXmlMessage(stringRecord)
-         recordApiEntity  =  if (maybeXmlMessage.isEmpty){
-                               val empty : Option[RecordApiEntity] = None
-                               empty
-                            } else {
-           Some(createRecordEntity(maybeXmlMessage.get))
-      }
-      } yield (recordApiEntity)
+      } yield (SourceResponseParser.parseXmlResponse(stringRecord))
    }
-
-   private def extractXmlMessage(response: String): Option[Node] = {
-      val xmlDoc = XML.loadString(response)
-      val xmlMsg = xmlDoc \\ "msg"
-      xmlMsg.lastOption
-   }
-
-   private def createRecordEntity(msgXml: Node) = {
-      val idXml = msgXml \ "id"
-      if (!idXml.isEmpty) {
-         val id = idXml.text
-         RecordApiEntity("ok",Some(id))
-      } else {
-         val status  =  msgXml.text
-         RecordApiEntity(status,None)
-      }
-   }
-
 
 }
 

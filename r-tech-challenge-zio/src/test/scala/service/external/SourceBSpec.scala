@@ -13,7 +13,7 @@ object SourceBSpec extends ZIOSpecDefault {
     test("normalized user names") {
       val expectedResponse = Some(RecordApiEntity("ok",Some("0ad5aecf126c2ea417d65c6fbfbb7055")))
       val response = for {
-        record  <- ZIO.attempt(SourceResponseParser.parseXmlResponse(sampleResponse))
+        record  <- SourceResponseParser.parseXmlResponse(sampleResponse)
       } yield record
       assertZIO(response)(Assertion.equalTo(expectedResponse))
     }

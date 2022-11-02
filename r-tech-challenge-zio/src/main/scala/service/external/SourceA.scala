@@ -1,11 +1,10 @@
 package service.external
 
-import service.entity.{RecordApiEntity}
-import zio.{URLayer, ZIO, ZLayer}
-import zio.json._
+import service.entity.RecordApiEntity
+import zio.{ZIO, ZLayer}
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
-import service.entity.RecordApiEntity.fromJsonDecoderRecordApiEntity
+import service.internal.SourceResponseParser
 
 trait SourceA {
 
@@ -23,21 +22,11 @@ case class SourceAImpl(url: String) extends SourceA {
       EventLoopGroup.auto(),
       ChannelFactory.auto)
 
-
-   private def processResponse(response: Response): ZIO[Any, Throwable, Option[RecordApiEntity]] = {
+   private def processResponse(response: Response) =
       for {
-         eitherErrorRecord <-  response.body.asString.map(_.fromJson[RecordApiEntity])
-         zioRecord  = eitherErrorRecord match {
-            case Left(e) =>
-               ZIO.logWarning(s"Received a malformed record $e") zipRight
-               ZIO.succeed(None)
-            case Right(record) =>
-               ZIO.succeed(Some(record))
-         }
-         maybeRecord  <- zioRecord
-      } yield maybeRecord
-   }
-
+         first <- response.body.asString
+         maybeApiEntity <- SourceResponseParser.parseJsonResponse(first)
+      } yield maybeApiEntity
 
 }
 
