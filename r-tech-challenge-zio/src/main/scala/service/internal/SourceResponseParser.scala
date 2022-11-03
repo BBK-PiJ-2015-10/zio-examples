@@ -16,6 +16,12 @@ object SourceResponseParser {
     }
 
   def parseJsonResponse(response: String): ZIO[Any, Throwable, Option[RecordApiEntity]] =
+    parseJsonResponseHelper(response).catchAll{ _ =>
+      ZIO.logInfo(s"Received a malformed response $response") zipRight
+        ZIO.succeed(None)
+    }
+  
+  private def parseJsonResponseHelper(response: String): ZIO[Any, Throwable, Option[RecordApiEntity]] =
     for {
       eitherErrorRecord <- ZIO.attempt(response).map(_.fromJson[RecordApiEntity])
       zioRecord = eitherErrorRecord match {
