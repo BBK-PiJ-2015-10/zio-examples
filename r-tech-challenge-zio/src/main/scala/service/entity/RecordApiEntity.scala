@@ -4,7 +4,6 @@ import zio.json._
 
 case class RecordApiEntity(status: String, id: Option[String])
 
-
 object RecordApiEntity {
 
   implicit val toJsonEncoderRecordApiEntity = DeriveJsonEncoder.gen[RecordApiEntity]
@@ -12,4 +11,3 @@ object RecordApiEntity {
   implicit val fromJsonDecoderRecordApiEntity = DeriveJsonDecoder.gen[RecordApiEntity]
 
 }
-
