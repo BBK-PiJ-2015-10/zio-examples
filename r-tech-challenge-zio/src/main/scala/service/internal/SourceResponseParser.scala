@@ -15,7 +15,7 @@ object SourceResponseParser {
         ZIO.succeed(None)
     }
 
-  def parseJsonResponse(response: String): ZIO[Any, Throwable, Option[RecordApiEntity]] =
+  def parseJsonResponse(response: String): ZIO[Any, Nothing, Option[RecordApiEntity]] =
     parseJsonResponseHelper(response).catchAll { _ =>
       ZIO.logInfo(s"Received a malformed response $response") zipRight
         ZIO.succeed(None)
