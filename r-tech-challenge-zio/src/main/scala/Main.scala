@@ -1,8 +1,6 @@
-
 import service.AllLayers._
-import service.external.{SourceA,SourceB}
+import service.external.{SourceA, SourceB}
 import zio._
-
 
 object Main extends ZIOAppDefault {
 
