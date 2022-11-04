@@ -1,15 +1,26 @@
 package service.internal
 
 import service.entity.RecordApiEntity
-import service.external.{Source, SourceA, SourceB}
+import service.external.{SourceA, SourceB}
 import zio._
 
-case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) {
+trait Orchestrator {
 
-  private def execute() = for {
+  def execute(): ZIO[Any, Throwable, (String, String)]
+
+}
+
+case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) extends Orchestrator {
+
+  override def execute(): ZIO[Any, Throwable, (String, String)] = for {
     queue     <- Queue.unbounded[RecordApiEntity]
     doneTuple <- triggerA(queue) zipPar triggerB(queue)
   } yield doneTuple
+
+//  def execute(): ZIO[Any,Throwable,(String,String)] = for {
+//    queue     <- Queue.unbounded[RecordApiEntity]
+//    doneTuple <- triggerA(queue) zipPar triggerB(queue)
+//  } yield doneTuple
 
   private def triggerA(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
     for {
@@ -19,7 +30,7 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) {
       done <- if (!record.isEmpty && record.get.status.equals("done")) {
                 ZIO.logInfo(s"Received done record from source A") zipRight ZIO.succeed("done")
               } else {
-                ZIO.logInfo(s"Received record from source A") zipRight triggerA(queue)
+                ZIO.logInfo(s"Received record from source A: $record") zipRight triggerA(queue)
               }
     } yield done
 
@@ -31,16 +42,13 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) {
       done <- if (!record.isEmpty && record.get.status.equals("done")) {
                 ZIO.logInfo(s"Received done record from source B") zipRight ZIO.succeed("done")
               } else {
-                ZIO.logInfo(s"Received record from source B") zipRight triggerB(queue)
+                ZIO.logInfo(s"Received record from source B $record") zipRight triggerB(queue)
               }
     } yield done
 
 }
 
 object OrchestratorImpl {
-  def layer(): ZLayer[SourceA with SourceB,Throwable,OrchestratorImpl] =
-    ZLayer.fromFunction(OrchestratorImpl(_,_))
+  def layer(): ZLayer[SourceA with SourceB, Throwable, Orchestrator] =
+    ZLayer.fromFunction(OrchestratorImpl(_, _))
 }
-
-
-

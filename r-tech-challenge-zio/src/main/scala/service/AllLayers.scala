@@ -1,7 +1,7 @@
 package service
 
 import service.external.{Source, SourceA, SourceAImpl, SourceB, SourceBImpl, SourceImpl}
-import service.internal.OrchestratorImpl
+import service.internal.{Orchestrator, OrchestratorImpl}
 import zio._
 
 object AllLayers {
@@ -20,7 +20,5 @@ object AllLayers {
   }
 
   val orchestratorLayer = OrchestratorImpl.layer()
-
-
 
 }
