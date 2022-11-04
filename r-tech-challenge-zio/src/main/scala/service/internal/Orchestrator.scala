@@ -12,15 +12,21 @@ trait Orchestrator {
 
 case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) extends Orchestrator {
 
+  def testing() = for {
+    queue         <- Queue.unbounded[RecordApiEntity]
+    sourceAResult <- triggerA(queue).fork
+    sourceBResult <- triggerB(queue).fork
+  } yield ()
+
+  private def triggerProcessor(queue: Queue[RecordApiEntity]) =
+    for {
+      record <- queue.take
+    } yield ()
+
   override def execute(): ZIO[Any, Throwable, (String, String)] = for {
     queue     <- Queue.unbounded[RecordApiEntity]
     doneTuple <- triggerA(queue) zipPar triggerB(queue)
   } yield doneTuple
-
-//  def execute(): ZIO[Any,Throwable,(String,String)] = for {
-//    queue     <- Queue.unbounded[RecordApiEntity]
-//    doneTuple <- triggerA(queue) zipPar triggerB(queue)
-//  } yield doneTuple
 
   private def triggerA(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
     for {
