@@ -1,10 +1,10 @@
 package service.internal
 
 import service.entity.RecordApiEntity
-import service.external.{SourceA, SourceB}
+import service.external.{Source, SourceA, SourceB}
 import zio._
 
-case class Orchestrator(sourceA: SourceA, sourceB: SourceB) {
+case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) {
 
   private def execute() = for {
     queue     <- Queue.unbounded[RecordApiEntity]
@@ -36,3 +36,11 @@ case class Orchestrator(sourceA: SourceA, sourceB: SourceB) {
     } yield done
 
 }
+
+object OrchestratorImpl {
+  def layer(): ZLayer[SourceA with SourceB,Throwable,OrchestratorImpl] =
+    ZLayer.fromFunction(OrchestratorImpl(_,_))
+}
+
+
+

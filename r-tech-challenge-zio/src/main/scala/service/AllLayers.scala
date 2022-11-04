@@ -1,6 +1,7 @@
 package service
 
-import service.external.{Source, SourceAImpl, SourceBImpl, SourceImpl}
+import service.external.{Source, SourceA, SourceAImpl, SourceB, SourceBImpl, SourceImpl}
+import service.internal.OrchestratorImpl
 import zio._
 
 object AllLayers {
@@ -10,12 +11,16 @@ object AllLayers {
 
   val sourceLayer: ZLayer[Any, Nothing, Source] = SourceImpl.layer()
 
-  val sourceALayer = sourceLayer.flatMap { src =>
+  val sourceALayer: ZLayer[Any, Throwable, SourceA] = sourceLayer.flatMap { src =>
     SourceAImpl.layer(urlA, src.get)
   }
 
-  val sourceBLayer = sourceLayer.flatMap { src =>
+  val sourceBLayer: ZLayer[Any, Throwable, SourceB] = sourceLayer.flatMap { src =>
     SourceBImpl.layer(urlB, src.get)
   }
+
+  val orchestratorLayer = OrchestratorImpl.layer()
+
+
 
 }

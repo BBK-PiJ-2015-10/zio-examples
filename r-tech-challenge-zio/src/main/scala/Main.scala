@@ -18,7 +18,8 @@ object Main extends ZIOAppDefault {
   } yield ()).provide(
     sourceLayer,
     sourceALayer,
-    sourceBLayer
+    sourceBLayer,
+    orchestratorLayer
   )
 
 }
