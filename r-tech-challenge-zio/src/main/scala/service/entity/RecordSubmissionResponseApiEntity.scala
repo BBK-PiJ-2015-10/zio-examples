@@ -6,6 +6,7 @@ case class RecordSubmissionResponseApiEntity(status: String)
 
 object RecordSubmissionResponseApiEntity {
 
-  implicit val fromJsonDecoderRecordSubmissionResponseApiEntity = DeriveJsonDecoder.gen[RecordSubmissionApiEntity]
+  implicit val fromJsonDecoderRecordSubmissionResponseApiEntity =
+    DeriveJsonDecoder.gen[RecordSubmissionResponseApiEntity]
 
 }
