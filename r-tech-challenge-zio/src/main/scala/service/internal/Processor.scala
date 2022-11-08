@@ -1,13 +1,16 @@
 package service.internal
 
 import service.entity.{RecordApiEntity, RecordSubmissionApiEntity}
-
 import zio.stm._
 import zio._
 
-trait Processor {}
+trait Processor {
 
-case class ProcessorImpl(var recordIds: Set[String], ref: TRef[Int]) {
+  def process(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]]
+
+}
+
+case class ProcessorImpl(var recordIds: Set[String], sources: TRef[Int]) extends Processor {
 
   def process(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] = {
     val processZio: ZSTM[Any, Throwable, List[RecordSubmissionApiEntity]] = for {
@@ -28,7 +31,7 @@ case class ProcessorImpl(var recordIds: Set[String], ref: TRef[Int]) {
         STM.attempt(List())
       } else STM.attempt(List())
     } else {
-      val count = ref.updateAndGet(_ + 1)
+      val count = sources.updateAndGet(_ + 1)
       if (count == 2) {
         STM.attempt(processOrphans())
       } else {
@@ -47,7 +50,7 @@ case class ProcessorImpl(var recordIds: Set[String], ref: TRef[Int]) {
         ZIO.attempt(List())
       } else ZIO.logInfo(s"Weird received a ${record.status} with empty id") zipRight ZIO.succeed(List())
     } else {
-      val count = ref.updateAndGet(_ + 1)
+      val count = sources.updateAndGet(_ + 1)
       if (count == 2) {
         ZIO.logInfo(s"Process done, sending orphans") zipRight ZIO.attempt(processOrphans())
       } else {
@@ -58,4 +61,9 @@ case class ProcessorImpl(var recordIds: Set[String], ref: TRef[Int]) {
   def processOrphans(): List[RecordSubmissionApiEntity] =
     recordIds.map(id => RecordSubmissionApiEntity("orphan", id)).toList
 
+}
+
+object ProcessorImpl {
+  def layer(recordIds: Set[String], sources: TRef[Int]): ZLayer[Any, Throwable, Processor] =
+    ZLayer.fromZIO(ZIO.from(ProcessorImpl(recordIds,sources)))
 }
