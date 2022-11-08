@@ -18,15 +18,16 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) extends Orchestr
     sourceBResult <- triggerB(queue).fork
   } yield ()
 
+  override def execute(): ZIO[Any, Throwable, (String, String)] = for {
+    queue     <- Queue.unbounded[RecordApiEntity]
+    doneTuple <- triggerA(queue) zipPar triggerB(queue)
+    mima      <- queue.take
+  } yield doneTuple
+
   private def triggerProcessor(queue: Queue[RecordApiEntity]) =
     for {
       record <- queue.take
     } yield ()
-
-  override def execute(): ZIO[Any, Throwable, (String, String)] = for {
-    queue     <- Queue.unbounded[RecordApiEntity]
-    doneTuple <- triggerA(queue) zipPar triggerB(queue)
-  } yield doneTuple
 
   private def triggerA(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
     for {
