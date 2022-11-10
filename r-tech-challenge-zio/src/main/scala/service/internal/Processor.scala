@@ -10,7 +10,7 @@ trait Processor {
 
 }
 
-case class ProcessorImpl(var recordIds: Set[String], sources: TRef[Int]) extends Processor {
+case class ProcessorImpl(var recordIds: Set[String], sources: Ref[Int]) extends Processor {
 
   def process(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] = {
     val processZio: ZSTM[Any, Throwable, List[RecordSubmissionApiEntity]] = for {
@@ -64,6 +64,6 @@ case class ProcessorImpl(var recordIds: Set[String], sources: TRef[Int]) extends
 }
 
 object ProcessorImpl {
-  def layer(recordIds: Set[String], sources: TRef[Int]): ZLayer[Any, Throwable, Processor] =
-    ZLayer.fromZIO(ZIO.from(ProcessorImpl(recordIds,sources)))
+  def layer(recordIds: Set[String], sources: Ref[Int]): ZLayer[Any, Throwable, Processor] =
+    ZLayer.fromZIO(ZIO.from(ProcessorImpl(recordIds, sources)))
 }

@@ -23,7 +23,9 @@ object Main extends ZIOAppDefault {
     sourceLayer,
     sourceALayer,
     sourceBLayer,
-    orchestratorLayer
+    orchestratorLayer,
+    processorLayer,
+    sinkLayer
   )
 
 }

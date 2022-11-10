@@ -1,26 +1,28 @@
 package service.external
 
 import service.entity.{RecordSubmissionApiEntity, RecordSubmissionResponseApiEntity}
-import zio.ZIO
+import zio.{Ref, ZIO, ZLayer}
 import zio.json._
 import service.entity.RecordSubmissionApiEntity.toJsonEncoderRecordSubmissionApiEntity
-import service.internal.SinkResponseParser
+import service.internal.{Processor, ProcessorImpl, SinkResponseParser}
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 
 trait Sink {
 
   def submitRecord(
-    url: String,
     record: RecordSubmissionApiEntity
   ): ZIO[Any, Throwable, Option[RecordSubmissionResponseApiEntity]]
 
+  def submitRecords(
+    records: List[RecordSubmissionApiEntity]
+  ): ZIO[Any, Throwable, List[Option[RecordSubmissionResponseApiEntity]]]
+
 }
 
-case class SinkImpl() extends Sink {
+case class SinkImpl(url: String) extends Sink {
 
   override def submitRecord(
-    url: String,
     record: RecordSubmissionApiEntity
   ): ZIO[Any, Throwable, Option[RecordSubmissionResponseApiEntity]] = (for {
     recordSubmissionJson <- ZIO.from(record.toJson)
@@ -33,4 +35,16 @@ case class SinkImpl() extends Sink {
     ChannelFactory.auto
   )
 
+  override def submitRecords(
+    records: List[RecordSubmissionApiEntity]
+  ): ZIO[Any, Throwable, List[Option[RecordSubmissionResponseApiEntity]]] =
+    for {
+      _         <- ZIO.logInfo(s"Submitting $records records")
+      responses <- ZIO.foreach(records)(submitRecord(_))
+    } yield responses
+}
+
+object SinkImpl {
+  def layer(url: String): ZLayer[Any, Throwable, Sink] =
+    ZLayer.fromZIO(ZIO.from(SinkImpl(url)))
 }

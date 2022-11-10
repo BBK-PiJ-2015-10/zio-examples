@@ -1,7 +1,7 @@
 package service.internal
 
 import service.entity.RecordApiEntity
-import service.external.{SourceA, SourceB}
+import service.external.{Sink, SourceA, SourceB}
 import zio._
 
 trait Orchestrator {
@@ -10,7 +10,8 @@ trait Orchestrator {
 
 }
 
-case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) extends Orchestrator {
+case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: ProcessorImpl, sink: Sink)
+    extends Orchestrator {
 
   def testing() = for {
     queue         <- Queue.unbounded[RecordApiEntity]
@@ -19,9 +20,17 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) extends Orchestr
   } yield ()
 
   override def execute(): ZIO[Any, Throwable, (String, String)] = for {
-    queue     <- Queue.unbounded[RecordApiEntity]
-    doneTuple <- triggerA(queue) zipPar triggerB(queue)
-    mima      <- queue.take
+    queue           <- Queue.unbounded[RecordApiEntity]
+    doneTuple       <- triggerA(queue) zipPar triggerB(queue)
+    mima            <- queue.take
+    recordsToSubmit <- processor.process(mima)
+    _ <- if (recordsToSubmit.isEmpty) {
+           //ZIO.foreach(recordsToSubmit)(sink.submitRecord(_))
+           ZIO.unit
+         } else {
+           ZIO.unit
+         }
+    _ <- ZIO.logInfo("culon")
   } yield doneTuple
 
   private def triggerProcessor(queue: Queue[RecordApiEntity]) =
@@ -56,6 +65,6 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB) extends Orchestr
 }
 
 object OrchestratorImpl {
-  def layer(): ZLayer[SourceA with SourceB, Throwable, Orchestrator] =
-    ZLayer.fromFunction(OrchestratorImpl(_, _))
+  def layer(): ZLayer[SourceA with SourceB with ProcessorImpl, Throwable, Orchestrator] =
+    ZLayer.fromFunction(OrchestratorImpl(_, _, _))
 }
