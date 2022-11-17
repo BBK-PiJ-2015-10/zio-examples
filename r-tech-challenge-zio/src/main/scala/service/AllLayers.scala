@@ -28,7 +28,7 @@ object AllLayers {
   val totalSources: UIO[Ref[Int]] = Ref.make(2)
 
   val processorZio: ZIO[Any, Throwable, ProcessorImpl] = for {
-    totalConsumers <- Ref.make(2)
+    totalConsumers <- Ref.make(0)
     ale            <- ZIO.from(ProcessorImpl(Set(), totalConsumers))
   } yield ale
 

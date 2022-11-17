@@ -6,37 +6,51 @@ import zio._
 
 trait Orchestrator {
 
-  def execute(): ZIO[Any, Throwable, (String, String)]
+  def execute(): ZIO[Any, Throwable, (String, String, String)]
 
 }
 
 case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: ProcessorImpl, sink: Sink)
     extends Orchestrator {
 
-  def testing() = for {
-    queue         <- Queue.unbounded[RecordApiEntity]
-    sourceAResult <- triggerA(queue).fork
-    sourceBResult <- triggerB(queue).fork
-  } yield ()
+  override def execute(): ZIO[Any, Throwable, (String, String, String)] = for {
+    queue               <- Queue.unbounded[RecordApiEntity]
+    triggerAFib         <- triggerA(queue).fork
+    triggerBFib         <- triggerB(queue).fork
+    triggerProcessorFib <- triggerProcessor(queue).fork
+    _                   <- ZIO.logInfo("culon")
+    doneA               <- triggerAFib.join
+    _                   <- ZIO.logInfo(s"Done with $doneA")
+    doneB               <- triggerBFib.join
+    _                   <- ZIO.logInfo(s"Done with $doneB")
+    doneP               <- triggerProcessorFib.join
+    _                   <- ZIO.logInfo(s"Done with $doneP")
+    _                   <- ZIO.logInfo(s"Done with all of them $doneA, $doneB, $doneP")
+  } yield (doneA, doneB, doneP)
 
-  override def execute(): ZIO[Any, Throwable, (String, String)] = for {
-    queue           <- Queue.unbounded[RecordApiEntity]
-    doneTuple       <- triggerA(queue) zipPar triggerB(queue)
-    mima            <- queue.take
-    recordsToSubmit <- processor.process(mima)
-    _ <- if (recordsToSubmit.isEmpty) {
-           //ZIO.foreach(recordsToSubmit)(sink.submitRecord(_))
-           ZIO.unit
-         } else {
-           ZIO.unit
-         }
-    _ <- ZIO.logInfo("culon")
-  } yield doneTuple
-
-  private def triggerProcessor(queue: Queue[RecordApiEntity]) =
+  private def triggerProcessor(queue: Queue[RecordApiEntity]) : ZIO[Any, Throwable, String] =
     for {
-      record <- queue.take
-    } yield ()
+      recordReceived  <- queue.take
+      recordsToSubmit <- processor.process(recordReceived)
+      result <- if (!recordsToSubmit.isEmpty) {
+                  sink.submitRecords(recordsToSubmit) *>
+                    evaluateDone(queue)
+                } else {
+                  evaluateDone(queue)
+                }
+    } yield result
+
+  def evaluateDone(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
+    for {
+      doneCount <- processor.sources.get
+      result <- if (doneCount == 2) {
+                  ZIO.logInfo(s"Done looking for queues, doneCount is $doneCount") *> triggerProcessor(queue)
+                } else {
+                  ZIO.logInfo(s"Not done, , doneCount is $doneCount will look for more times on queue") *> ZIO.succeed(
+                    "done-P"
+                  )
+                }
+    } yield result
 
   private def triggerA(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
     for {
@@ -44,7 +58,7 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: Proce
       record <- sourceA.fetchSourceARecord()
       _      <- queue.offer(record.get).when(!record.isEmpty && !record.get.status.equals("done"))
       done <- if (!record.isEmpty && record.get.status.equals("done")) {
-                ZIO.logInfo(s"Received done record from source A") zipRight ZIO.succeed("done")
+                ZIO.logInfo(s"Received done record from source A") zipRight ZIO.succeed("done-A")
               } else {
                 ZIO.logInfo(s"Received record from source A: $record") zipRight triggerA(queue)
               }
@@ -56,7 +70,7 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: Proce
       record <- sourceA.fetchSourceARecord()
       _      <- queue.offer(record.get).when(!record.isEmpty && !record.get.status.equals("done"))
       done <- if (!record.isEmpty && record.get.status.equals("done")) {
-                ZIO.logInfo(s"Received done record from source B") zipRight ZIO.succeed("done")
+                ZIO.logInfo(s"Received done record from source B") zipRight ZIO.succeed("done-B")
               } else {
                 ZIO.logInfo(s"Received record from source B $record") zipRight triggerB(queue)
               }
@@ -65,6 +79,6 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: Proce
 }
 
 object OrchestratorImpl {
-  def layer(): ZLayer[SourceA with SourceB with ProcessorImpl, Throwable, Orchestrator] =
-    ZLayer.fromFunction(OrchestratorImpl(_, _, _))
+  def layer(): ZLayer[SourceA with SourceB with ProcessorImpl with Sink, Throwable, Orchestrator] =
+    ZLayer.fromFunction(OrchestratorImpl(_, _, _, _))
 }

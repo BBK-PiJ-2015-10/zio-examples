@@ -19,6 +19,8 @@ case class ProcessorImpl(var recordIds: Set[String], sources: Ref[Int]) extends 
     processZio.commit
   }
 
+  def getSources = sources
+
   private def processHelper(record: RecordApiEntity): STM[Throwable, List[RecordSubmissionApiEntity]] =
     if (record.status.equals("ok")) {
       if (!record.id.isEmpty) {
@@ -39,24 +41,24 @@ case class ProcessorImpl(var recordIds: Set[String], sources: Ref[Int]) extends 
       }
     }
 
-  def processZIO(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] =
-    if (record.status.equals("ok")) {
-      if (!record.id.isEmpty) {
-        val exist = recordIds.contains(record.id.get)
-        if (exist)
-          ZIO.attempt(List(RecordSubmissionApiEntity("joined", record.id.get)))
-        else
-          recordIds += record.id.get
-        ZIO.attempt(List())
-      } else ZIO.logInfo(s"Weird received a ${record.status} with empty id") zipRight ZIO.succeed(List())
-    } else {
-      val count = sources.updateAndGet(_ + 1)
-      if (count == 2) {
-        ZIO.logInfo(s"Process done, sending orphans") zipRight ZIO.attempt(processOrphans())
-      } else {
-        ZIO.logInfo(s"Received first done. Sending empty") zipRight ZIO.attempt(List())
-      }
-    }
+//  def processZIO(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] =
+//    if (record.status.equals("ok")) {
+//      if (!record.id.isEmpty) {
+//        val exist = recordIds.contains(record.id.get)
+//        if (exist)
+//          ZIO.attempt(List(RecordSubmissionApiEntity("joined", record.id.get)))
+//        else
+//          recordIds += record.id.get
+//        ZIO.attempt(List())
+//      } else ZIO.logInfo(s"Weird received a ${record.status} with empty id") zipRight ZIO.succeed(List())
+//    } else {
+//      val count = sources.updateAndGet(_ + 1)
+//      if (count == 2) {
+//        ZIO.logInfo(s"Process done, sending orphans") zipRight ZIO.attempt(processOrphans())
+//      } else {
+//        ZIO.logInfo(s"Received first done. Sending empty") zipRight ZIO.attempt(List())
+//      }
+//    }
 
   def processOrphans(): List[RecordSubmissionApiEntity] =
     recordIds.map(id => RecordSubmissionApiEntity("orphan", id)).toList
