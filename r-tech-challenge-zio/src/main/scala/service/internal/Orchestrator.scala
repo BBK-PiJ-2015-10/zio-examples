@@ -28,15 +28,16 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: Proce
     _                   <- ZIO.logInfo(s"Done with all of them $doneA, $doneB, $doneP")
   } yield (doneA, doneB, doneP)
 
-  private def triggerProcessor(queue: Queue[RecordApiEntity]) : ZIO[Any, Throwable, String] =
+  private def triggerProcessor(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
     for {
       recordReceived  <- queue.take
       recordsToSubmit <- processor.process(recordReceived)
+      _               <- ZIO.logInfo(s"Processing will send to submit $recordsToSubmit")
       result <- if (!recordsToSubmit.isEmpty) {
-                  sink.submitRecords(recordsToSubmit) *>
-                    evaluateDone(queue)
+                  ZIO.logInfo(s"Submitting $recordsToSubmit") zipRight sink.submitRecords(recordsToSubmit) *>
+                    ZIO.logInfo("Evaluating if done path 1") zipRight evaluateDone(queue)
                 } else {
-                  evaluateDone(queue)
+                  ZIO.logInfo("Evaluating if done path 2") zipRight evaluateDone(queue)
                 }
     } yield result
 

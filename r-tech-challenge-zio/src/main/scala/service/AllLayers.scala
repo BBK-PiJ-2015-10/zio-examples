@@ -1,7 +1,7 @@
 package service
 
 import service.external.{SinkImpl, Source, SourceA, SourceAImpl, SourceB, SourceBImpl, SourceImpl}
-import service.internal.{Orchestrator, OrchestratorImpl, Processor, ProcessorImpl}
+import service.internal.{Orchestrator, OrchestratorImpl, Processor, ProcessorClassicSTM, ProcessorImpl}
 import zio._
 import zio.stm.{TRef, ZSTM}
 
@@ -27,12 +27,12 @@ object AllLayers {
 
   val totalSources: UIO[Ref[Int]] = Ref.make(2)
 
-  val processorZio: ZIO[Any, Throwable, ProcessorImpl] = for {
+  val processorZio: ZIO[Any, Throwable, ProcessorClassicSTM] = for {
     totalConsumers <- Ref.make(0)
-    ale            <- ZIO.from(ProcessorImpl(Set(), totalConsumers))
+    ale            <- ZIO.from(ProcessorClassicSTM(Set(), totalConsumers))
   } yield ale
 
-  val processorLayer: ZLayer[Any, Throwable, ProcessorImpl] = {
+  val processorLayer: ZLayer[Any, Throwable, ProcessorClassicSTM] = {
     ZLayer.fromZIO(processorZio)
   }
 
