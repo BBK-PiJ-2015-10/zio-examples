@@ -5,7 +5,7 @@ import service.internal.SourceResponseParser
 import zio.{Scope}
 import zio.test._
 
-object SourceBSpec extends ZIOSpecDefault {
+object SourceReponseParser extends ZIOSpecDefault {
 
   val sampleXmlResponse = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<msg>\n    <id value=\"0ad5aecf126c2ea417d65c6fbfbb7055\"/>\n</msg>"
 

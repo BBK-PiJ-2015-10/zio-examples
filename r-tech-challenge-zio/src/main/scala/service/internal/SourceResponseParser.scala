@@ -10,13 +10,15 @@ import scala.xml.{Node, XML}
 object SourceResponseParser {
 
   def parseXmlResponse(response: String): ZIO[Any, Nothing, Option[RecordApiEntity]] =
-    ZIO.attempt(extractXmlMessage(response).map(createRecordEntity(_))).catchAll { _ =>
-      ZIO.logInfo(s"Received a malformed response $response") zipRight
-        ZIO.succeed(None)
-    }
+    ZIO.logInfo(s"xml response is $response") zipRight ZIO
+      .attempt(extractXmlMessage(response).map(createRecordEntity(_)))
+      .catchAll { _ =>
+        ZIO.logInfo(s"Received a malformed response $response") zipRight
+          ZIO.succeed(None)
+      }
 
   def parseJsonResponse(response: String): ZIO[Any, Nothing, Option[RecordApiEntity]] =
-    parseJsonResponseHelper(response).catchAll { _ =>
+    ZIO.logInfo(s"json response is $response") zipRight parseJsonResponseHelper(response).catchAll { _ =>
       ZIO.logInfo(s"Received a malformed response $response") zipRight
         ZIO.succeed(None)
     }

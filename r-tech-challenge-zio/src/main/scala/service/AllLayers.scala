@@ -1,7 +1,7 @@
 package service
 
 import service.external.{SinkImpl, Source, SourceA, SourceAImpl, SourceB, SourceBImpl, SourceImpl}
-import service.internal.{Orchestrator, OrchestratorImpl, Processor, ProcessorClassicSTM, ProcessorImpl}
+import service.internal.{Orchestrator, OrchestratorImpl, Processor, ProcessorClassicSTM}
 import zio._
 import zio.stm.{TRef, ZSTM}
 

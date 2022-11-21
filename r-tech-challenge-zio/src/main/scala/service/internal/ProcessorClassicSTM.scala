@@ -14,7 +14,8 @@ case class ProcessorClassicSTM(var recordIds: Set[String], sources: Ref[Int]) ex
   }
 
   def process(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] =
-    processHelper(record).commit
+    processZIO(record)
+  //processHelper(record).commit
 
   def getSources = sources
 
@@ -23,11 +24,11 @@ case class ProcessorClassicSTM(var recordIds: Set[String], sources: Ref[Int]) ex
       if (!record.id.isEmpty) {
         val exist = recordIds.contains(record.id.get)
         if (exist) {
-          recordIds -= record.id.get
+          recordIds = recordIds - record.id.get
           println("FUCKER1")
           STM.attempt(List(RecordSubmissionApiEntity("joined", record.id.get)))
         } else {
-          recordIds += record.id.get
+          recordIds = recordIds + record.id.get
           println("FUCKER2")
           STM.attempt(List())
         }
@@ -43,24 +44,33 @@ case class ProcessorClassicSTM(var recordIds: Set[String], sources: Ref[Int]) ex
       }
     }
 
-  //  def processZIO(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] =
-  //    if (record.status.equals("ok")) {
-  //      if (!record.id.isEmpty) {
-  //        val exist = recordIds.contains(record.id.get)
-  //        if (exist)
-  //          ZIO.attempt(List(RecordSubmissionApiEntity("joined", record.id.get)))
-  //        else
-  //          recordIds += record.id.get
-  //        ZIO.attempt(List())
-  //      } else ZIO.logInfo(s"Weird received a ${record.status} with empty id") zipRight ZIO.succeed(List())
-  //    } else {
-  //      val count = sources.updateAndGet(_ + 1)
-  //      if (count == 2) {
-  //        ZIO.logInfo(s"Process done, sending orphans") zipRight ZIO.attempt(processOrphans())
-  //      } else {
-  //        ZIO.logInfo(s"Received first done. Sending empty") zipRight ZIO.attempt(List())
-  //      }
-  //    }
+  def processZIO(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]] =
+    if (record.status.equals("ok")) {
+      if (!record.id.isEmpty) {
+        val exist = recordIds.contains(record.id.get)
+        if (exist) {
+          recordIds = recordIds - record.id.get
+          for {
+            _      <- ZIO.logInfo(s"Processor found a pair for id :${record.id}")
+            output <- ZIO.attempt(List(RecordSubmissionApiEntity("joined", record.id.get)))
+          } yield output
+        } else {
+          recordIds = recordIds + record.id.get
+          for {
+            _      <- ZIO.logInfo(s"Processor added id :${record.id}")
+            output <- ZIO.attempt(List())
+          } yield output
+        }
+      } else
+        ZIO.logInfo(s"Processor received a weird record ${record.status} with empty id") zipRight ZIO.succeed(List())
+    } else {
+      val count = sources.updateAndGet(_ + 1)
+      if (count == 2) {
+        ZIO.logInfo(s"Processor Process done, sending orphans") zipRight ZIO.attempt(processOrphans())
+      } else {
+        ZIO.logInfo(s"Processor Received first done. Sending empty") zipRight ZIO.attempt(List())
+      }
+    }
 
   def processOrphans(): List[RecordSubmissionApiEntity] =
     recordIds.map(id => RecordSubmissionApiEntity("orphan", id)).toList
