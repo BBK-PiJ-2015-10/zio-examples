@@ -49,8 +49,12 @@ object SourceResponseParser {
       val id    = culon.toList.head.text
       RecordApiEntity("ok", Some(id))
     } else {
-      val status = msgXml.text
-      RecordApiEntity(status, None)
+      val done = msgXml \ "done"
+      if (!done.isEmpty) {
+        RecordApiEntity("done", None)
+      } else {
+        throw new IllegalArgumentException(s"Received a message with a unknown status")
+      }
     }
   }
 

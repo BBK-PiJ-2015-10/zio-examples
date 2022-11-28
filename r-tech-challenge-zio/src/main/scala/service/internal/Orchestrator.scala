@@ -55,40 +55,29 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: Proce
                 }
     } yield result
 
-
-  private def triggerAOld(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
-    for {
-      _      <- ZIO.logInfo("Requesting record from sourceA")
-      record <- sourceA.fetchSourceARecord()
-      _      <- ZIO.logInfo(s"Received record $record from sourceA")
-      _      <- queue.offer(record.get).when(!record.isEmpty && !record.get.status.equals("done"))
-      done <- if (!record.isEmpty && record.get.status.equals("done")) {
-                ZIO.logInfo(s"Received done record from source A") zipRight ZIO.succeed("done-A")
-              } else {
-                ZIO.logInfo(s"Received record from source A: $record") zipRight triggerA(queue)
-              }
-    } yield done
-
-
   private def triggerA(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
     for {
       _      <- ZIO.logInfo("Requesting record from sourceA")
       record <- sourceA.fetchSourceARecord()
       _      <- ZIO.logInfo(s"Received record $record from sourceA")
       isEmpty = record.isEmpty
-      done <- if (isEmpty){
-        ZIO.logInfo(s"Received empty record $record from sourceA") zipRight triggerA(queue)
-      } else {
-        if (record.get.status.equals("done")) {
-          ZIO.logInfo(s"Received done record $record from sourceA") zipRight ZIO.succeed("done-A")
-        } else {
-          for {
-            _  <- ZIO.logInfo(s"Received record $record from sourceA")
-            _  <- queue.offer(record.get)
-            result <- triggerA(queue)
-          } yield result
-        }
-    }
+      done <- if (isEmpty) {
+                ZIO.logInfo(s"Received empty record $record from sourceA") zipRight triggerA(queue)
+              } else {
+                if (record.get.status.equals("done")) {
+                  for {
+                    _      <- ZIO.logInfo(s"Received done record $record from sourceA")
+                    _      <- queue.offer(record.get)
+                    result <- ZIO.succeed("done-A")
+                  } yield result
+                } else {
+                  for {
+                    _      <- ZIO.logInfo(s"Received record $record from sourceA")
+                    _      <- queue.offer(record.get)
+                    result <- triggerA(queue)
+                  } yield result
+                }
+              }
     } yield done
 
   private def triggerB(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
@@ -97,38 +86,24 @@ case class OrchestratorImpl(sourceA: SourceA, sourceB: SourceB, processor: Proce
       record <- sourceB.fetchSourceBRecord()
       _      <- ZIO.logInfo(s"Received record $record from sourceB")
       isEmpty = record.isEmpty
-      done <- if (isEmpty){
-        ZIO.logInfo(s"Received empty record $record from sourceB") zipRight triggerB(queue)
-      } else {
-        if (record.get.status.equals("done")) {
-          ZIO.logInfo(s"Received done record $record from sourceB") zipRight ZIO.succeed("done-B")
-        } else {
-          for {
-            _  <- ZIO.logInfo(s"Received record $record from sourceB")
-            _  <- queue.offer(record.get)
-            result <- triggerB(queue)
-          } yield result
-        }
-      }
+      done <- if (isEmpty) {
+                ZIO.logInfo(s"Received empty record $record from sourceB") zipRight triggerB(queue)
+              } else {
+                if (record.get.status.equals("done")) {
+                  for {
+                    _      <- ZIO.logInfo(s"Received done record $record from sourceB")
+                    _      <- queue.offer(record.get)
+                    result <- ZIO.succeed("done-B")
+                  } yield result
+                } else {
+                  for {
+                    _      <- ZIO.logInfo(s"Received record $record from sourceB")
+                    _      <- queue.offer(record.get)
+                    result <- triggerB(queue)
+                  } yield result
+                }
+              }
     } yield done
-
-
-//  private def triggerB(queue: Queue[RecordApiEntity]): ZIO[Any, Throwable, String] =
-//    for {
-//      _      <- ZIO.logInfo("Requesting record from sourceB")
-//      record <- sourceB.fetchSourceBRecord()
-//      _      <- ZIO.logInfo(s"Received record $record from sourceB")
-//      _      <- queue.offer(record.get).when(!record.isEmpty && !record.get.status.equals("done"))
-//      done <- if (record.isEmpty) {
-//                ZIO.logInfo(s"Received empty record from source B $record") zipRight triggerB(queue)
-//              } else {
-//                if (record.get.status.equals("done")) {
-//                  ZIO.logInfo(s"Received done record from source B") zipRight ZIO.succeed("done-B")
-//                } else {
-//                  ZIO.logInfo(s"Received record from source B") zipRight triggerB(queue)
-//                }
-//              }
-//    } yield done
 
 }
 
