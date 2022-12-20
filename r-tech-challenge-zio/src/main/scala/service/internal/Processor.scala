@@ -1,12 +1,14 @@
 package service.internal
 
 import service.entity.{RecordApiEntity, RecordSubmissionApiEntity}
-import zio.stm._
+//import zio.stm._
 import zio._
 
 trait Processor {
 
   def process(record: RecordApiEntity): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]]
+
+  def processOrphans(): ZIO[Any, Throwable, List[RecordSubmissionApiEntity]]
 
 }
 

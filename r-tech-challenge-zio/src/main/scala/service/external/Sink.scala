@@ -4,7 +4,7 @@ import service.entity.{RecordSubmissionApiEntity, RecordSubmissionResponseApiEnt
 import zio.{Ref, ZIO, ZLayer}
 import zio.json._
 import service.entity.RecordSubmissionApiEntity.toJsonEncoderRecordSubmissionApiEntity
-import service.internal.{Processor, ProcessorImpl, SinkResponseParser}
+import service.internal.SinkResponseParser
 import zhttp.http._
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 
