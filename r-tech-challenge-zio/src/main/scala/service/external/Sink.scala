@@ -40,7 +40,7 @@ case class SinkImpl(url: String) extends Sink {
   ): ZIO[Any, Throwable, List[Option[RecordSubmissionResponseApiEntity]]] =
     for {
       _         <- ZIO.logInfo(s"Submitting $records records")
-      responses <- ZIO.foreach(records)(submitRecord(_))
+      responses <- ZIO.foreachPar(records)(submitRecord(_))
     } yield responses
 }
 
