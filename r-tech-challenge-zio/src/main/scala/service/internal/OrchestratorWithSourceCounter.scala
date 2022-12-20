@@ -28,7 +28,6 @@ case class OrchestratorWithSourceCounter(sourceA: SourceA, sourceB: SourceB, pro
     for {
       recordReceived  <- queue.take
       recordsToSubmit <- processor.process(recordReceived)
-      //_               <- ZIO.logInfo(s"Orchestrator will send to submit $recordsToSubmit")
       result <- if (!recordsToSubmit.isEmpty) {
                   ZIO.logInfo(s"Submitting $recordsToSubmit") zipRight sink.submitRecords(recordsToSubmit) *>
                     ZIO.logInfo("Evaluating if done path 1") zipRight evaluateDone(queue,counter)
@@ -79,6 +78,7 @@ case class OrchestratorWithSourceCounter(sourceA: SourceA, sourceB: SourceB, pro
                     _              <- ZIO.logInfo(s"Received done record $record from sourceA")
                     updatedCounter <- counter.updateAndGet(_ + 1)
                     _              <- ZIO.logInfo(s"Counter updated to $updatedCounter by sourceA")
+                    _              <- queue.offer(record.get)
                     result         <- ZIO.succeed(true)
                   } yield result
                 } else {
